@@ -52,3 +52,16 @@ export const AIRPORT_TYPE_LABELS: Record<number, string> = {
   3: 'LARGE AIRPORT',
   4: 'SEAPLANE BASE'
 };
+
+/**
+ * Lookup airport name and IATA code by ICAO/IATA code.
+ */
+export function lookupAirportName(code: string | null): string {
+  if (!code) return '—';
+  const c = code.trim().toUpperCase();
+  const found = GLOBAL_AIRPORTS.find(a => a.ic === c || a.ia === c);
+  if (found) {
+    return found.ia ? `${found.ia} (${found.n})` : found.n;
+  }
+  return c;
+}

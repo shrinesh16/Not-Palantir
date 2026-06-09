@@ -5,15 +5,56 @@ export interface Flight {
   id: string;
   callsign: string;
   icao24: string;
+  airline?: string;
+  flightNumber?: string;
   model: string;
+  desc?: string;
   registration: string;
   lat: number;
   lng: number;
-  alt: number; // meters
+  alt: number;
   speed_knots: number;
-  heading: number; // degrees
-  type: 'commercial' | 'private' | 'jet' | 'military';
+  heading: number;
+  type: 'commercial' | 'military' | 'private' | 'jet';
   route: string;
+  originAirport?: string | null;
+  destinationAirport?: string | null;
+  alt_geom?: number;
+  ias?: number;
+  tas?: number;
+  mach?: number;
+  wd?: number;
+  ws?: number;
+  oat?: number;
+  tat?: number;
+  track_rate?: number;
+  roll?: number;
+  mag_heading?: number;
+  true_heading?: number;
+  baro_rate?: number;
+  geom_rate?: number;
+  squawk?: string;
+  emergency?: string;
+  category?: string;
+  nav_qnh?: number;
+  nav_altitude_mcp?: number;
+  nav_heading?: number;
+  nav_modes?: string[];
+  ownOp?: string;
+  year?: string;
+  rssi?: number;
+  messages?: number;
+  seen?: number;
+  seen_pos?: number;
+  dbFlags?: number;
+  source?: string;
+  version?: number;
+  sil?: number;
+  sil_type?: string;
+  nac_p?: number;
+  nac_v?: number;
+  nic_baro?: number;
+  rc?: number;
 }
 
 export interface MaritimePort {
@@ -258,26 +299,8 @@ export const STATIC_SATELLITES: Satellite[] = [
   { id: 'SAT-4', name: 'USA-245 (KH-11 Keyhole)', mission: 'Surveillance / Recon', color: '#ff3d3d', lat: 0, lng: 0, alt: 390, inclination: 97.2, velocity: 7.68 }
 ];
 
-// Initial flight definitions. Their coordinates will be updated dynamically in memory
-export const INITIAL_FLIGHTS: Flight[] = [
-  { id: 'FL-101', callsign: 'UAL904', icao24: 'A004B2', model: 'Boeing 777-300ER', registration: 'N789UA', lat: 40.75, lng: -73.98, alt: 10600, speed_knots: 480, heading: 85, type: 'commercial', route: 'JFK -> LHR' },
-  { id: 'FL-102', callsign: 'BAW117', icao24: '4005C8', model: 'Boeing 787-9', registration: 'G-ZBJA', lat: 51.50, lng: -0.08, alt: 11200, speed_knots: 465, heading: 260, type: 'commercial', route: 'LHR -> JFK' },
-  { id: 'FL-103', callsign: 'ANA008', icao24: '8401A4', model: 'Boeing 777-300ER', registration: 'JA789A', lat: 35.68, lng: 139.76, alt: 9800, speed_knots: 490, heading: 60, type: 'commercial', route: 'HND -> SFO' },
-  { id: 'FL-104', callsign: 'UAE201', icao24: '8960C2', model: 'Airbus A380-800', registration: 'A6-EEO', lat: 25.20, lng: 55.30, alt: 11900, speed_knots: 475, heading: 310, type: 'commercial', route: 'DXB -> JFK' },
-  { id: 'FL-105', callsign: 'QFA012', icao24: '7C0D23', model: 'Boeing 787-9', registration: 'VH-ZNK', lat: -33.86, lng: 151.20, alt: 12200, speed_knots: 485, heading: 80, type: 'commercial', route: 'SYD -> LAX' },
-  { id: 'FL-106', callsign: 'DLH430', icao24: '3C64A1', model: 'Boeing 747-8i', registration: 'D-ABYA', lat: 50.11, lng: 8.68, alt: 10900, speed_knots: 470, heading: 280, type: 'commercial', route: 'FRA -> ORD' },
-  { id: 'FL-107', callsign: 'SIA318', icao24: '76CE35', model: 'Airbus A350-900', registration: '9V-SMF', lat: 1.35, lng: 103.82, alt: 11500, speed_knots: 475, heading: 340, type: 'commercial', route: 'SIN -> LHR' },
-  { id: 'FL-201', callsign: 'N552GL', icao24: 'A6F721', model: 'Gulfstream G650', registration: 'N552GL', lat: 37.33, lng: -121.88, alt: 13100, speed_knots: 510, heading: 110, type: 'private', route: 'SJC -> ASE' },
-  { id: 'FL-202', callsign: 'D-ILGO', icao24: '3C59A2', model: 'Cessna Citation Mustang', registration: 'D-ILGO', lat: 48.13, lng: 11.58, alt: 8500, speed_knots: 340, heading: 180, type: 'private', route: 'MUC -> VCE' },
-  { id: 'FL-203', callsign: 'N100UP', icao24: 'A00001', model: 'Bombardier Learjet 60', registration: 'N100UP', lat: 25.76, lng: -80.19, alt: 12500, speed_knots: 460, heading: 45, type: 'private', route: 'MIA -> TEB' },
-  { id: 'FL-301', callsign: 'LX-JAZ', icao24: '4D024B', model: 'Bombardier Global 6000', registration: 'LX-JAZ', lat: 49.60, lng: 6.13, alt: 12500, speed_knots: 495, heading: 330, type: 'jet', route: 'LUX -> TEB' },
-  { id: 'FL-302', callsign: 'B-KPC', icao24: '78012A', model: 'Gulfstream G550', registration: 'B-KPC', lat: 22.31, lng: 113.93, alt: 13500, speed_knots: 505, heading: 190, type: 'jet', route: 'HKG -> SIN' },
-  { id: 'FL-303', callsign: 'N999VP', icao24: 'A1B2C3', model: 'Embraer Lineage 1000', registration: 'N999VP', lat: 34.05, lng: -118.24, alt: 12800, speed_knots: 480, heading: 90, type: 'jet', route: 'LAX -> JFK' },
-  { id: 'FL-401', callsign: 'MC01', icao24: 'ADFEB4', model: 'Lockheed C-130 Hercules', registration: '88-1801', lat: 50.11, lng: 8.68, alt: 6400, speed_knots: 290, heading: 135, type: 'military', route: 'RMS -> SIG' },
-  { id: 'FL-402', callsign: 'FIGHTER21', icao24: 'AE4C28', model: 'McDonnell Douglas F-15E', registration: '90-0250', lat: 36.95, lng: -76.33, alt: 4500, speed_knots: 620, heading: 45, type: 'military', route: 'NGF Tactical Patrol' },
-  { id: 'FL-403', callsign: 'RCH245', icao24: 'AE07F2', model: 'Boeing C-17 Globemaster', registration: '02-1110', lat: 35.28, lng: 139.67, alt: 8900, speed_knots: 450, heading: 240, type: 'military', route: 'YOK -> GUM' },
-  { id: 'FL-404', callsign: 'NATO01', icao24: '4D03F1', model: 'Boeing E-3A Sentry', registration: 'LX-N90443', lat: 52.52, lng: 13.40, alt: 9500, speed_knots: 420, heading: 90, type: 'military', route: 'AWACS Baltic Patrol' }
-];
+// Flight data is now fetched live from the OpenSky Network API.
+// See src/data/flightApi.ts for the real-time data fetch and classification logic.
 
 export const INITIAL_SHIPS: Ship[] = [
   { id: 'SH-1', name: 'COSCO SHIPPING SCENARIO', flag: 'China', type: 'cargo', lat: 31.0, lng: 122.5, speed: 18, heading: 130, destination: 'Singapore' },
@@ -296,7 +319,6 @@ export const INITIAL_SHIPS: Ship[] = [
 
 // Generator to simulate live movements
 export class LiveDataSimulator {
-  public flights: Flight[] = [...INITIAL_FLIGHTS];
   public ships: Ship[] = [...INITIAL_SHIPS];
   public satellites: Satellite[] = [...STATIC_SATELLITES];
   private startTime = Date.now();
@@ -304,63 +326,7 @@ export class LiveDataSimulator {
   constructor() {}
 
   public update() {
-    // 1. Move flights
-    this.flights = this.flights.map(f => {
-      // Calculate delta position based on heading and speed
-      const speedMPS = f.speed_knots * 0.514444; // knots to m/s
-      const timeDeltaS = 1; // 1s update
-      const distM = speedMPS * timeDeltaS * 50; // speed up simulation by 50x
-
-      // Earth radius in meters
-      const R = 6378137;
-      const headingRad = (f.heading * Math.PI) / 180;
-      
-      const latRad = (f.lat * Math.PI) / 180;
-      const lngRad = (f.lng * Math.PI) / 180;
-
-      const dR = distM / R;
-
-      const nextLatRad = Math.asin(
-        Math.sin(latRad) * Math.cos(dR) +
-        Math.cos(latRad) * Math.sin(dR) * Math.cos(headingRad)
-      );
-
-      const nextLngRad = lngRad + Math.atan2(
-        Math.sin(headingRad) * Math.sin(dR) * Math.cos(latRad),
-        Math.cos(dR) - Math.sin(latRad) * Math.sin(nextLatRad)
-      );
-
-      let nextLat = (nextLatRad * 180) / Math.PI;
-      let nextLng = (nextLngRad * 180) / Math.PI;
-
-      // Wrap longitude
-      if (nextLng < -180) nextLng += 360;
-      if (nextLng > 180) nextLng -= 360;
-
-      // Keep latitude in bounds
-      if (nextLat < -85) nextLat = -85;
-      if (nextLat > 85) nextLat = 85;
-
-      // Random heading tweaks
-      let heading = f.heading + (Math.random() - 0.5) * 4;
-      if (heading < 0) heading += 360;
-      if (heading >= 360) heading -= 360;
-
-      // Minor altitude adjustments
-      let alt = f.alt + Math.round((Math.random() - 0.5) * 20);
-      if (alt < 2000) alt = 2000;
-      if (alt > 14000) alt = 14000;
-
-      return {
-        ...f,
-        lat: nextLat,
-        lng: nextLng,
-        heading,
-        alt
-      };
-    });
-
-    // 2. Move ships (much slower than flights, but noticeable over time)
+    // 1. Move ships (flights are now fetched live from OpenSky API)
     this.ships = this.ships.map(s => {
       const speedMPS = s.speed * 0.514444; // knots to m/s
       const distM = speedMPS * 1 * 50; // speed up simulation by 50x

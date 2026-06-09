@@ -21,11 +21,11 @@ interface LayerGroup {
   items: LayerItem[];
 }
 
-export const LayerPanel: React.FC<LayerPanelProps> = ({ 
+export const LayerPanel = React.memo<LayerPanelProps>(({ 
   activeLayers, 
   onToggleLayer, 
   onToggleGroup, 
-  counts 
+  counts
 }) => {
   const layerGroups: LayerGroup[] = [
     {
@@ -46,7 +46,7 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
         { key: 'ships', label: 'Active Vessels', icon: 'Ship' },
         { key: 'ships_tanker', label: 'Live Tankers', icon: 'Ship' },
         { key: 'ports', label: 'Strategic Ports', icon: 'Anchor' },
-        { key: 'tradeRoutes', label: 'Maritime Lanes', icon: 'GitFork', isGold: true },
+        { key: 'tradeRoutes', label: 'Maritime Lines', icon: 'GitFork', isGold: true },
         { key: 'waterways', label: 'Strategic Waterways', icon: 'Anchor' }
       ]
     },
@@ -197,6 +197,8 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
               {/* Group Child Items */}
               {!isCollapsed && (
                 <div className="layer-group-content">
+                  {/* Group Items */}
+
                   {group.items.map((item) => {
                     const ItemIcon = Icons[item.icon] as React.ComponentType<any>;
                     const isActive = activeLayers[item.key];
@@ -243,4 +245,4 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
       </div>
     </div>
   );
-};
+});

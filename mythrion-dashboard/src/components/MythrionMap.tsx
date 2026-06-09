@@ -7,7 +7,6 @@ import {
   STATIC_NUCLEAR,
   STATIC_CONFLICTS,
   STATIC_CABLES,
-  STATIC_TRADE_ROUTES,
   STATIC_CCTVS,
   STATIC_EARTHQUAKES,
   STATIC_FIRES,
@@ -22,11 +21,18 @@ import {
   STATIC_INTERNET_DISRUPTIONS,
   STATIC_STORAGE_FACILITIES
 } from '../data/mockData';
-import { airportsToGeoJSON, AIRPORT_TYPE_LABELS } from '../data/airports';
+import { airportsToGeoJSON, AIRPORT_TYPE_LABELS, lookupAirportName } from '../data/airports';
 import { portsToGeoJSON, PORT_SIZE_LABELS } from '../data/ports';
 import { PIPELINES } from '../data/worldmonitor/pipelines';
 import { STRATEGIC_WATERWAYS, SPACEPORTS, CRITICAL_MINERALS } from '../data/worldmonitor/geo';
 import type { Flight, Ship, Satellite } from '../data/mockData';
+import { fetchFlightRoute, fetchAircraftMetadata } from '../data/flightApi';
+import { getMaritimeLinesGeoJSON } from '../data/maritimeLines';
+
+import airplaneCommercialIcon from '../assets/icons/airplane-commercial.png';
+import airplanePrivateIcon from '../assets/icons/airplane-private.png';
+import airplaneJetIcon from '../assets/icons/airplane-jet.png';
+import airplaneMilitaryIcon from '../assets/icons/airplane-military.png';
 
 interface MythrionMapProps {
   projection: 'globe' | 'mercator';
@@ -36,10 +42,10 @@ interface MythrionMapProps {
   ships: Ship[];
   satellites: Satellite[];
   mapStyle?: 'dark' | 'satellite';
-  onMapViewportChange?: (viewport: { zoom: number; center: [number, number] }) => void;
+  onMapViewportChange?: (viewport: { zoom: number; center: [number, number]; bounds?: [[number, number], [number, number]] }) => void;
 }
 
-export const MythrionMap: React.FC<MythrionMapProps> = ({
+export const MythrionMap = React.memo<MythrionMapProps>(({
   projection,
   activeLayers,
   onSelectEntity,
@@ -72,8 +78,18 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
 
     map.on('load', () => {
       mapRef.current = map;
-      setMapLoaded(true);
-
+      
+      Promise.all([
+        map.loadImage(airplaneCommercialIcon).then(img => { map.addImage('airplane-commercial', img.data); }),
+        map.loadImage(airplanePrivateIcon).then(img => { map.addImage('airplane-private', img.data); }),
+        map.loadImage(airplaneJetIcon).then(img => { map.addImage('airplane-jet', img.data); }),
+        map.loadImage(airplaneMilitaryIcon).then(img => { map.addImage('airplane-military', img.data); })
+      ]).then(() => {
+        setMapLoaded(true);
+      }).catch(err => {
+        console.error('Failed to load airplane icons:', err);
+        setMapLoaded(true);
+      });
       // Create empty sources for dynamic data layers
       map.addSource('flights', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('ships', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -191,14 +207,7 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
 
       map.addSource('trade-routes', {
         type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: STATIC_TRADE_ROUTES.map(r => ({
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: r.path },
-            properties: { ...r, layerType: 'trade-route' }
-          }))
-        }
+        data: getMaritimeLinesGeoJSON()
       });
 
       map.addSource('pipelines', {
@@ -403,17 +412,16 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
         }
       });
 
-      // 3. Trade Routes (Dashed Lines)
+      // 3. Trade Routes (Detailed Maritime Lines)
       map.addLayer({
         id: 'trade-routes-layer',
         type: 'line',
         source: 'trade-routes',
         layout: { visibility: 'none' },
         paint: {
-          'line-color': '#d4af37',
-          'line-width': 1.5,
-          'line-dasharray': [4, 4],
-          'line-opacity': 0.6
+          'line-color': '#00d2ff',
+          'line-width': 1.0,
+          'line-opacity': 0.22
         }
       });
 
@@ -629,64 +637,60 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
       // 14a. Dynamic Flights - Commercial
       map.addLayer({
         id: 'flights-commercial-layer',
-        type: 'circle',
+        type: 'symbol',
         source: 'flights',
         filter: ['==', ['get', 'type'], 'commercial'],
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-radius': 5.5,
-          'circle-color': '#00e5ff',
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-opacity': 0.85
+        layout: { 
+          visibility: 'none',
+          'icon-image': 'airplane-commercial',
+          'icon-rotate': ['get', 'heading'],
+          'icon-allow-overlap': true,
+          'icon-size': 0.7
         }
       });
 
       // 14b. Dynamic Flights - Private
       map.addLayer({
         id: 'flights-private-layer',
-        type: 'circle',
+        type: 'symbol',
         source: 'flights',
         filter: ['==', ['get', 'type'], 'private'],
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-radius': 5.5,
-          'circle-color': '#d4af37',
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-opacity': 0.85
+        layout: { 
+          visibility: 'none',
+          'icon-image': 'airplane-private',
+          'icon-rotate': ['get', 'heading'],
+          'icon-allow-overlap': true,
+          'icon-size': 0.7
         }
       });
 
       // 14c. Dynamic Flights - Jets
       map.addLayer({
         id: 'flights-jet-layer',
-        type: 'circle',
+        type: 'symbol',
         source: 'flights',
         filter: ['==', ['get', 'type'], 'jet'],
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-radius': 6.0,
-          'circle-color': '#ff4081',
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-opacity': 0.85
+        layout: { 
+          visibility: 'none',
+          'icon-image': 'airplane-jet',
+          'icon-rotate': ['get', 'heading'],
+          'icon-allow-overlap': true,
+          'icon-size': 0.8
         }
       });
 
       // 14d. Dynamic Flights - Military
       map.addLayer({
         id: 'flights-military-layer',
-        type: 'circle',
+        type: 'symbol',
         source: 'flights',
         filter: ['==', ['get', 'type'], 'military'],
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-radius': 6.5,
-          'circle-color': '#ff3d3d',
-          'circle-stroke-width': 2.0,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-opacity': 0.95
+        layout: { 
+          visibility: 'none',
+          'icon-image': 'airplane-military',
+          'icon-rotate': ['get', 'heading'],
+          'icon-allow-overlap': true,
+          'icon-size': 0.9
         }
       });
 
@@ -973,13 +977,23 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
         }
       });
 
-      // Viewport change updater
       const handleViewportChange = () => {
         const center = map.getCenter();
         const zoom = map.getZoom();
+        const boundsObj = map.getBounds();
+        let bounds: [[number, number], [number, number]] | undefined;
+        if (boundsObj) {
+          const sw = boundsObj.getSouthWest();
+          const ne = boundsObj.getNorthEast();
+          bounds = [
+            [sw.lat, sw.lng],
+            [ne.lat, ne.lng]
+          ];
+        }
         onMapViewportChangeRef.current?.({
           zoom,
-          center: [center.lng, center.lat]
+          center: [center.lng, center.lat],
+          bounds
         });
       };
 
@@ -1030,14 +1044,74 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
               </div>
             `;
           } else if (f.layer.id.startsWith('flights-')) {
-            html = `
-              <div class="map-tooltip">
-                <div class="tooltip-header">✈️ FLIGHT [${props.callsign || 'UNK'}]</div>
-                <div class="tooltip-name">${props.model || 'Aircraft'}</div>
-                <div class="tooltip-detail">Route: ${props.route || 'Local'}</div>
-                <div class="tooltip-detail">Alt: ${Number(props.alt).toLocaleString()} ft | Speed: ${props.speed_knots} kt</div>
+            const brandLabel = props.airline || props.ownOp || 'Private Aircraft';
+            const flightNameLabel = props.flightNumber ? `${props.airline || ''} ${props.flightNumber}` : (props.callsign || 'UNK');
+            const descLabel = props.desc || props.model || '';
+            
+            // Vertical rate arrow
+            const vRate = Number(props.baro_rate || 0);
+            const vRateArrow = vRate > 100 ? '↑' : vRate < -100 ? '↓' : '→';
+            const vRateColor = vRate > 100 ? '#00e676' : vRate < -100 ? '#ff3d3d' : '#aaa';
+            
+            // Mach display
+            const machStr = props.mach ? `M${Number(props.mach).toFixed(3)}` : '';
+            
+            // Emergency badge
+            const emergencyBadge = props.emergency && props.emergency !== 'none' 
+              ? `<div class="tooltip-detail" style="color:#ff3d3d;font-weight:700">⚠️ EMERGENCY: ${String(props.emergency).toUpperCase()}</div>` 
+              : '';
+            
+             html = `
+              <div class="map-tooltip flight-tooltip" data-callsign="${props.callsign}" data-icao24="${props.icao24 || ''}" style="min-width: 280px">
+                <div class="tooltip-header">✈️ ${String(props.type).toUpperCase()} [${flightNameLabel}]</div>
+                <div class="tooltip-name">${brandLabel}</div>
+                ${emergencyBadge}
+                <div class="tooltip-detail flight-desc" style="color:#aaa">${descLabel || '—'} • ${props.icao24 || '—'}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px;font-size:10px;font-family:var(--font-mono, monospace)">
+                  <span style="color:#888">ALT BARO</span><span style="color:#ffd600">${props.alt ? Number(props.alt).toLocaleString() + ' ft' : '—'}</span>
+                  <span style="color:#888">ALT GEOM</span><span>${props.alt_geom ? Number(props.alt_geom).toLocaleString() + ' ft' : '—'}</span>
+                  <span style="color:#888">GS</span><span>${props.speed_knots || '—'} kts</span>
+                  <span style="color:#888">IAS / TAS</span><span>${props.ias || '—'} / ${props.tas || '—'} kts</span>
+                  <span style="color:#888">MACH</span><span style="color:#00e5ff">${machStr || '—'}</span>
+                  <span style="color:#888">TRACK</span><span>${props.heading ? Number(props.heading).toFixed(1) + '°' : '—'}</span>
+                  <span style="color:#888">V/S</span><span style="color:${vRateColor}">${vRateArrow} ${vRate ? Math.abs(vRate).toLocaleString() + ' fpm' : '—'}</span>
+                  <span style="color:#888">SQUAWK</span><span>${props.squawk || '—'}</span>
+                </div>
+                <div class="tooltip-detail flight-route" style="margin-top:4px;color:#888">Loading route...</div>
               </div>
             `;
+
+            if (props.callsign) {
+              fetchFlightRoute(props.callsign).then(route => {
+                const currentTooltip = document.querySelector('.flight-tooltip');
+                if (currentTooltip && currentTooltip.getAttribute('data-callsign') === props.callsign) {
+                  const routeStr = route && (route.origin || route.destination)
+                    ? `${lookupAirportName(route.origin)} ➝ ${lookupAirportName(route.destination)}`
+                    : 'Route Unknown';
+                  const routeEl = currentTooltip.querySelector('.flight-route');
+                  if (routeEl) routeEl.textContent = routeStr;
+                }
+              });
+            }
+
+            if (props.icao24) {
+              fetchAircraftMetadata(props.icao24).then(meta => {
+                const currentTooltip = document.querySelector('.flight-tooltip');
+                if (currentTooltip && currentTooltip.getAttribute('data-icao24') === props.icao24) {
+                  if (meta) {
+                    const brandEl = currentTooltip.querySelector('.tooltip-name');
+                    if (brandEl && meta.ownOp) {
+                      brandEl.textContent = meta.ownOp;
+                    }
+                    const descEl = currentTooltip.querySelector('.flight-desc');
+                    if (descEl) {
+                      const descParts = [meta.desc || meta.model, meta.registration, props.icao24].filter(Boolean);
+                      descEl.textContent = descParts.join(' • ');
+                    }
+                  }
+                }
+              });
+            }
           } else if (f.layer.id.startsWith('ships-')) {
             html = `
               <div class="map-tooltip">
@@ -1376,7 +1450,7 @@ export const MythrionMap: React.FC<MythrionMapProps> = ({
       <div ref={mapContainerRef} className="maplibre-container" />
     </div>
   );
-};
+});
 
 // --- SOLAR TERMINATOR SHADOW ALGORITHM ---
 // Generates the night polygon for day/night overlay
